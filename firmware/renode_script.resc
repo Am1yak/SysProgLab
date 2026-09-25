@@ -1,0 +1,12 @@
+mach create "Heliostat-F411RE"
+
+machine LoadPlatformDescription @renode_model.repl
+
+sysbus LoadELF @build/firmware.elf
+
+showAnalyzer sysbus.usart2
+
+sysbus LogPeripheralAccess sysbus.spi2 true
+sysbus LogPeripheralAccess sysbus.gpioPortB true
+
+start
