@@ -37,7 +37,7 @@ $$f_{\text{SYSCLK}} = \frac{16\text{ MHz}}{16} \times 336 \div 4 = 84\text{ MHz}
 
 Шина APB1 Peripheral Clock ($PCLK1$): $DIV2 \rightarrow f_{\text{APB1}} = 42\text{ MHz}$.
 
-Шина APB1 Timer Clock ($TIMCLK1$): $DIV2 \times 2 \rightarrow f_{\text{APB1\_TIM}} = 84\text{ MHz}$.
+Шина APB1 Timer Clock ($TIMCLK1$): $DIV2 \times 2 \rightarrow f_{\text{APB1TIM}} = 84\text{ MHz}$.
 
 ### Параметри шини SPI2 (Flash-пам'ять W25Q64)
 Режим роботи: Master, Full-Duplex, SPI Mode 0 ($CPOL=0, CPHA=0$).  
@@ -49,7 +49,7 @@ $$f_{\text{SPI2}} = \frac{42\text{ MHz}}{2} = 21.0\text{ MBits/s}$$
 $Prescaler\ (PSC) = 83$
 $Auto-Reload\ Register\ (ARR) = 19999$
 
-$$f_{\text{PWM}} = \frac{f_{\text{APB1\_TIM}}}{(PSC + 1) \cdot (ARR + 1)} = \frac{84\,000\,000}{(83 + 1) \cdot (19999 + 1)} = \frac{84\,000\,000}{84 \cdot 20000} = 50\text{ Hz}$$
+$$f_{\text{PWM}} = \frac{f_{\text{APB1TIM}}}{(PSC + 1) \cdot (ARR + 1)} = \frac{84\,000\,000}{(83 + 1) \cdot (19999 + 1)} = \frac{84\,000\,000}{84 \cdot 20000} = 50\text{ Hz}$$
 
 Такт лічильника складає $1\ \mu\text{s}$. Тривалість імпульсу регулюється значеннями регістрів порівняння $CCR1$ та $CCR2$:
 $0^\circ$ (Мінімальний кут): $CCR = 1000$ ($1.0\text{ ms}$).  
