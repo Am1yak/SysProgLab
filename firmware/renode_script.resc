@@ -8,5 +8,12 @@ showAnalyzer sysbus.usart2
 
 sysbus LogPeripheralAccess sysbus.spi2 true
 sysbus LogPeripheralAccess sysbus.gpioPortB true
+sysbus LogPeripheralAccess sysbus.tim3 true
+sysbus LogPeripheralAccess sysbus.gpioPortA true
+
+sysbus.adc1 SetChannelValue 0 1650
+sysbus.adc1 SetChannelValue 1 1200
+sysbus.adc1 SetChannelValue 4 2500
+sysbus.adc1 SetChannelValue 8 800
 
 start
