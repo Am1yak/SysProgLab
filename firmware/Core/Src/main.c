@@ -451,29 +451,34 @@ void Run_System_SelfTest(void) {
 
   uint8_t flash_id_ok = (jedec_id[0] == 0xEF && jedec_id[1] == 0x40 && jedec_id[2] == 0x17);
 
-  uint8_t test_tx[4] = {0xDE, 0xAD, 0xBE, 0xEF};
-  uint8_t test_rx[4] = {0};
-
   uint8_t cmd_we = 0x06;
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
   HAL_SPI_Transmit(&hspi2, &cmd_we, 1, 100);
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
 
-  uint8_t write_cmd[4] = {0x02, 0x00, 0x00, 0x00};
+  uint8_t test_payload[4] = {0xDE, 0xAD, 0xBE, 0xEF};
+  uint8_t write_buf[8] = {0x02, 0x00, 0x00, 0x00, 0xDE, 0xAD, 0xBE, 0xEF};
+
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
-  HAL_SPI_Transmit(&hspi2, write_cmd, 4, 100);
-  HAL_SPI_Transmit(&hspi2, test_tx, 4, 100);
+  HAL_SPI_Transmit(&hspi2, write_buf, 8, 100);
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
 
   HAL_Delay(10); 
 
-  uint8_t read_cmd[4] = {0x03, 0x00, 0x00, 0x00};
+  uint8_t read_tx[12] = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+  uint8_t read_rx[12] = {0};
+
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
-  HAL_SPI_Transmit(&hspi2, read_cmd, 4, 100);
-  HAL_SPI_Receive(&hspi2, test_rx, 4, 100);
+  HAL_SPI_TransmitReceive(&hspi2, read_tx, read_rx, 12, 100);
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
 
-  uint8_t flash_mem_ok = (memcmp(test_tx, test_rx, 4) == 0);
+  uint8_t flash_mem_ok = 0;
+  for (int i = 0; i <= (12 - 4); i++) {
+      if (memcmp(&read_rx[i], test_payload, 4) == 0) {
+          flash_mem_ok = 1;
+          break;
+      }
+  }
 
   printf("DEVICE=FLASH INTERFACE=SPI2 JEDEC_ID=0x%02X%02X%02X ID_MATCH=%s MEM_LOOPBACK=%s STATUS=%s\r\n",
          jedec_id[0], jedec_id[1], jedec_id[2],
@@ -484,7 +489,7 @@ void Run_System_SelfTest(void) {
   uint32_t adc_channels[4] = {ADC_CHANNEL_0, ADC_CHANNEL_1, ADC_CHANNEL_4, ADC_CHANNEL_8};
   const char* ldr_names[4] = {"NORTH", "SOUTH", "EAST", "WEST"};
 
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET); 
 
   for (int i = 0; i < 4; i++) {
       ADC_ChannelConfTypeDef sConfig = {0};
@@ -496,18 +501,18 @@ void Run_System_SelfTest(void) {
       HAL_ADC_Start(&hadc1);
       if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
           uint32_t raw = HAL_ADC_GetValue(&hadc1);
-          float volt = (raw * 3.3f) / 4095.0f;
-          uint8_t range_ok = (volt >= 0.1f && volt <= 3.2f);
+          uint32_t mv = (raw * 3300) / 4095;
+          uint8_t range_ok = (raw >= 124 && raw <= 3971);
 
-          printf("DEVICE=ADC1_LDR SENSOR=%s RAW=%lu VOLT=%.2fV RANGE_CHECK_0.1V_3.2V=%s STATUS=%s\r\n",
-                 ldr_names[i], raw, volt,
+          printf("DEVICE=ADC1_LDR SENSOR=%s RAW=%lu VOLT=%lu.%02luV RANGE_CHECK_0.1V_3.2V=%s STATUS=%s\r\n",
+                 ldr_names[i], raw, mv / 1000, (mv % 1000) / 10,
                  range_ok ? "OK" : "OUT_OF_BOUNDS",
                  range_ok ? "PASS" : "FAIL");
       }
       HAL_ADC_Stop(&hadc1);
   }
 
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET); 
 
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);

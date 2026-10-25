@@ -1,4 +1,15 @@
 using "platforms/cpus/stm32f4.repl"
 
-w25q64: SPI.W25Q64 @ spi2
-    s25SlaveSelect: gpioPortB 12
+flash_mem: Memory.MappedMemory @ sysbus 0x90000000
+    size: 0x00800000
+
+w25q64: SPI.GenericSpiFlash @ spi2
+    underlyingMemory: flash_mem
+    manufacturerId: 0xEF
+    memoryType: 0x40
+    capacityCode: 0x17
+
+gpioPortB:
+    12 -> w25q64@0
+
+adc1: Analog.STM32_ADC @ sysbus 0x40012000
