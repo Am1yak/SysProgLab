@@ -2,6 +2,8 @@ mach create "Heliostat-F411RE"
 
 machine LoadPlatformDescription @renode_model.repl
 
+logFile $CWD/renode.log
+
 sysbus LoadELF @build/firmware.elf
 
 showAnalyzer sysbus.usart2
