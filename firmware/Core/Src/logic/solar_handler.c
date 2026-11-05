@@ -6,6 +6,9 @@
 #define SERVO_MIN_CCR 1000
 #define SERVO_MAX_CCR 2000
 
+
+extern TIM_HandleTypeDef htim3;
+
 static uint32_t current_az_ccr = 1500;
 static uint32_t current_el_ccr = 1500;
 

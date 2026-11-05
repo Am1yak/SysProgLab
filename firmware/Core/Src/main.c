@@ -66,6 +66,8 @@ static void MX_TIM3_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 void Run_System_SelfTest(void);
+uint32_t Read_ADC_Channel(uint32_t channel);
+void Proccess_Solar_Tracking(uint32_t raw_north, uint32_t raw_south, uint32_t raw_east, uint32_t raw_west);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -113,13 +115,26 @@ int main(void)
   printf("hello from STM32\r\n");
 
   Run_System_SelfTest();
+
+  uint32_t last_adc_tick = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    HAL_Delay(1000); 
+    uint32_t time_now = HAL_GetTick();
+
+    if (time_now - last_adc_tick >= 50) {
+      last_adc_tick = time_now;
+
+      uint32_t raw_n = Read_ADC_Channel(ADC_CHANNEL_0);
+      uint32_t raw_s = Read_ADC_Channel(ADC_CHANNEL_1);
+      uint32_t raw_e = Read_ADC_Channel(ADC_CHANNEL_4);
+      uint32_t raw_w = Read_ADC_Channel(ADC_CHANNEL_8);
+
+      Proccess_Solar_Tracking(raw_n, raw_s, raw_e, raw_w);
+    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -529,6 +544,26 @@ void Run_System_SelfTest(void) {
          ccr2_read, (ccr2_read == 2000) ? "PASS" : "FAIL");
 
   printf("=== [SYSTEM_BRINGUP_SELFTEST_END] ===\r\n\r\n");
+}
+
+uint32_t Read_ADC_Channel(uint32_t channel) {
+  ADC_ChannelConfTypeDef sConfig = {0};
+  sConfig.Channel = channel;
+  sConfig.Rank = 1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_84CYCLES;
+
+  HAL_ADC_ConfigChannel(&hadc1, &sConfig);
+
+  HAL_ADC_Start(&hadc1);
+    
+  uint32_t raw_value = 0;
+  if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
+      raw_value = HAL_ADC_GetValue(&hadc1);
+  }
+    
+  HAL_ADC_Stop(&hadc1);
+
+  return raw_value;
 }
 /* USER CODE END 4 */
 
