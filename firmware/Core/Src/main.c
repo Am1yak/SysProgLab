@@ -59,6 +59,10 @@ extern SPI_HandleTypeDef hspi2;
 extern ADC_HandleTypeDef hadc1;
 extern TIM_HandleTypeDef htim3;
 extern UART_HandleTypeDef huart2;
+
+volatile uint32_t g_event_trigger_cycles = 0;
+volatile uint8_t  g_event_pending = 0;
+uint32_t g_max_latency_cycles = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -71,7 +75,7 @@ static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 void Run_System_SelfTest(void);
 uint32_t Read_ADC_Channel(uint32_t channel);
-//uint32_t Get_Cycles();
+void Process_Pending_Events(void);
 void Proccess_Solar_Tracking(uint32_t raw_north, uint32_t raw_south, uint32_t raw_east, uint32_t raw_west);
 /* USER CODE END PFP */
 
@@ -136,6 +140,8 @@ int main(void)
   {
     uint32_t t_loop = Get_Cycles();
     uint32_t time_now = HAL_GetTick();
+
+    Process_Pending_Events();
 
     if (time_now - last_adc_tick >= 50) {
       last_adc_tick = time_now;
@@ -590,6 +596,28 @@ uint32_t Read_ADC_Channel(uint32_t channel) {
   HAL_ADC_Stop(&hadc1);
 
   return raw_value;
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+    if (GPIO_Pin == GPIO_PIN_13) { 
+        if (!g_event_pending) {
+            g_event_trigger_cycles = Get_Cycles(); 
+            g_event_pending = 1;                    
+        }
+    }
+}
+
+void Process_Pending_Events(void) {
+    if (g_event_pending) {
+        uint32_t reaction_cycles = Get_Cycles(); 
+        uint32_t latency = reaction_cycles - g_event_trigger_cycles;
+
+        if (latency > g_max_latency_cycles) {
+            g_max_latency_cycles = latency;
+        }
+
+        g_event_pending = 0;
+    }
 }
 /* USER CODE END 4 */
 

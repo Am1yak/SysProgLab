@@ -1,5 +1,10 @@
 #include "stm32f4xx_hal.h"
+#include <cstdint>
 #include <stdint.h>
+
+extern uint32_t _ebss;
+extern uint32_t _estack;
+#define STACK_FILL_PATTERN 0xAAAAAAAAU
 
 static void inline DWT_Init(void) {
     CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk; 
@@ -50,6 +55,27 @@ static inline void stats_jitter_add(metric_stats *stats, uint32_t cur_cycles, ui
     }
 
     stats->last_start = cur_cycles;
+}
+
+static inline void Stack_Paint(void) {
+    uint32_t *p = &_ebss;
+    uint32_t *sp;
+
+    __asm__ volatile ("mov %0, sp" : "=r" (sp));
+
+    while (p < sp) {
+        *p++ = STACK_FILL_PATTERN; 
+    }
+}
+
+static inline uint32_t Get_Max_Stack_Usage(void) {
+    const uint32_t *p = &_ebss;
+
+    while (p < &_estack && *p == STACK_FILL_PATTERN) {
+        p++;
+    }
+
+    return (uint32_t)((uint32_t*)&_estack - (uint32_t*)p);
 }
 
 
