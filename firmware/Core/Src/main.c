@@ -21,8 +21,10 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "main.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include "logic/metric_handler.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -67,6 +69,7 @@ static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 void Run_System_SelfTest(void);
 uint32_t Read_ADC_Channel(uint32_t channel);
+//uint32_t Get_Cycles();
 void Proccess_Solar_Tracking(uint32_t raw_north, uint32_t raw_south, uint32_t raw_east, uint32_t raw_west);
 /* USER CODE END PFP */
 
@@ -116,6 +119,11 @@ int main(void)
 
   Run_System_SelfTest();
 
+  DWT_Init();
+
+  static metric_stats st_loop = {.name = "loop"};
+  static metric_stats st_adc = {.name = "heliostat"}; 
+
   uint32_t last_adc_tick = 0;
   /* USER CODE END 2 */
 
@@ -123,18 +131,22 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    uint32_t t_loop = Get_Cycles();
     uint32_t time_now = HAL_GetTick();
 
     if (time_now - last_adc_tick >= 50) {
       last_adc_tick = time_now;
-
+      
+      uint32_t t_adc = Get_Cycles();
       uint32_t raw_n = Read_ADC_Channel(ADC_CHANNEL_0);
       uint32_t raw_s = Read_ADC_Channel(ADC_CHANNEL_1);
       uint32_t raw_e = Read_ADC_Channel(ADC_CHANNEL_4);
       uint32_t raw_w = Read_ADC_Channel(ADC_CHANNEL_8);
 
       Proccess_Solar_Tracking(raw_n, raw_s, raw_e, raw_w);
+      stats_add(&st_adc, Get_Cycles() - t_adc);
     }
+    stats_add(&st_loop, Get_Cycles() - t_loop);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

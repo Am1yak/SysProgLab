@@ -7,7 +7,16 @@ static void inline DWT_Init(void) {
 }
 
 static inline uint32_t Get_Cycles(void) {
-    return DWT->CYCCNT;
+    uint32_t ticks, val, load;
+    
+    do {
+        ticks = HAL_GetTick();
+        val = SysTick->VAL;
+    } while (ticks != HAL_GetTick());
+
+    load = SysTick->LOAD;
+    
+    return (ticks * (load + 1)) + (load - val);
 }
 
 static inline uint32_t Get_Microseconds(void) {
