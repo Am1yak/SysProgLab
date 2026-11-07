@@ -62,7 +62,8 @@ extern UART_HandleTypeDef huart2;
 
 volatile uint32_t g_event_trigger_cycles = 0;
 volatile uint8_t  g_event_pending = 0;
-uint32_t g_max_latency_cycles = 0;
+volatile uint32_t g_max_latency_cycles = 0;
+uint32_t max_stack_usage = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -95,7 +96,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+  Stack_Paint();
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -128,10 +129,13 @@ int main(void)
   DWT_Init();
 
   static metric_stats st_loop = {.name = "loop"};
-  static metric_stats st_adc = {.name = "heliostat"}; 
-  // static metric_stats st_spi2 = {.name = "flash"};
+  static metric_stats st_adc = {.name = "heliostat"};
 
   uint32_t last_adc_tick = 0;
+  uint32_t last_uart_tick = 0;
+  uint32_t last_spi2_tick = 0;
+
+  static uint32_t g_flash_log_addr = 0x000000;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -142,11 +146,11 @@ int main(void)
     uint32_t time_now = HAL_GetTick();
 
     Process_Pending_Events();
-
+    
+    //---ADC---
     if (time_now - last_adc_tick >= 50) {
       last_adc_tick = time_now;
       
-      //---ADC---
       uint32_t t_adc = Get_Cycles();
       stats_jitter_add(&st_adc, t_adc, HELIOSTAT_PERIOD_CYCLES);
 
@@ -157,11 +161,53 @@ int main(void)
 
       Proccess_Solar_Tracking(raw_n, raw_s, raw_e, raw_w);
       stats_add(&st_adc, Get_Cycles() - t_adc);
-
-      //---UART---
-
-      //---SPI(Flash)---
     }
+    if (max_stack_usage == 0 && time_now >= 2000) {
+      max_stack_usage = Get_Max_Stack_Usage();
+    }
+
+    
+    //---UART---
+    if (time_now - last_uart_tick >= 1000) {
+      last_uart_tick = time_now;
+      printf("\nMetrics log\n");
+      printf("Max loop time: %li\n", st_loop.max);
+      printf("ADC jitter: %li\n", st_adc.max_jitter);
+      printf("Latency: %li\n", g_max_latency_cycles);
+      printf("Stack depth: %li\n", max_stack_usage);
+    }
+    //---SPI(Flash)---
+    if (time_now - last_spi2_tick >= 1000) {
+      last_spi2_tick = time_now;
+
+      MetricsLog log_entry = {
+        .timestamp = time_now,
+        .max_loop_time = st_loop.max,
+        .adc_jitter = st_adc.max_jitter,
+        .max_latency = g_max_latency_cycles,
+        .stack_depth = max_stack_usage
+      };
+
+      uint8_t cmd_wren = 0x06;
+      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+      HAL_SPI_Transmit(&hspi2, &cmd_wren, 1, 10);
+      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
+
+      uint8_t header[4] = {
+          0x02,                                    
+          (uint8_t)(g_flash_log_addr >> 16),       
+          (uint8_t)(g_flash_log_addr >> 8),       
+          (uint8_t)(g_flash_log_addr)             
+      };
+
+      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+      HAL_SPI_Transmit(&hspi2, header, 4, 100);
+      HAL_SPI_Transmit(&hspi2, (uint8_t*)&log_entry, sizeof(MetricLog), 100);
+      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
+
+      g_flash_log_addr += sizeof(MetricLog);
+    }
+
     stats_add(&st_loop, Get_Cycles() - t_loop);
     /* USER CODE END WHILE */
 
@@ -442,6 +488,7 @@ static void MX_GPIO_Init(void)
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_SYSCFG_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -601,7 +648,7 @@ uint32_t Read_ADC_Channel(uint32_t channel) {
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     if (GPIO_Pin == GPIO_PIN_13) { 
         if (!g_event_pending) {
-            g_event_trigger_cycles = Get_Cycles(); 
+            g_event_trigger_cycles = Get_Cycles();
             g_event_pending = 1;                    
         }
     }

@@ -14,5 +14,6 @@ gpioPortB:
 
 adc1: Analog.STM32_ADC @ sysbus 0x40012000
 
-interuptButton: HardwareButton @ gpioPortC 13
+interuptButton: Miscellaneous.Button @ sysbus
+    invert: true
     -> gpioPortC@13

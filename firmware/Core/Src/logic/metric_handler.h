@@ -1,5 +1,4 @@
 #include "stm32f4xx_hal.h"
-#include <cstdint>
 #include <stdint.h>
 
 extern uint32_t _ebss;
@@ -78,4 +77,11 @@ static inline uint32_t Get_Max_Stack_Usage(void) {
     return (uint32_t)((uint32_t*)&_estack - (uint32_t*)p);
 }
 
+typedef struct __attribute__((packed)) {
+    uint32_t timestamp;
+    uint32_t max_loop_time;
+    uint32_t adc_jitter;
+    uint32_t max_latency;
+    uint32_t stack_depth;
+} MetricsLog;
 
