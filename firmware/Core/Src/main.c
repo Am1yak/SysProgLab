@@ -17,6 +17,7 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include "main.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -36,6 +37,7 @@
 /* USER CODE BEGIN PD */
 #define ADC_STROBE_PORT GPIOA
 #define ADC_STROBE_PIN GPIO_PIN_5
+#define HELIOSTAT_PERIOD_CYCLES (50U * 84000U)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -123,6 +125,7 @@ int main(void)
 
   static metric_stats st_loop = {.name = "loop"};
   static metric_stats st_adc = {.name = "heliostat"}; 
+  // static metric_stats st_spi2 = {.name = "flash"};
 
   uint32_t last_adc_tick = 0;
   /* USER CODE END 2 */
@@ -137,7 +140,10 @@ int main(void)
     if (time_now - last_adc_tick >= 50) {
       last_adc_tick = time_now;
       
+      //---ADC---
       uint32_t t_adc = Get_Cycles();
+      stats_jitter_add(&st_adc, t_adc, HELIOSTAT_PERIOD_CYCLES);
+
       uint32_t raw_n = Read_ADC_Channel(ADC_CHANNEL_0);
       uint32_t raw_s = Read_ADC_Channel(ADC_CHANNEL_1);
       uint32_t raw_e = Read_ADC_Channel(ADC_CHANNEL_4);
@@ -145,6 +151,10 @@ int main(void)
 
       Proccess_Solar_Tracking(raw_n, raw_s, raw_e, raw_w);
       stats_add(&st_adc, Get_Cycles() - t_adc);
+
+      //---UART---
+
+      //---SPI(Flash)---
     }
     stats_add(&st_loop, Get_Cycles() - t_loop);
     /* USER CODE END WHILE */
@@ -456,6 +466,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(FLASH_CS_GPIO_Port, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 

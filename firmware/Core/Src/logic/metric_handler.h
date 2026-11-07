@@ -27,6 +27,9 @@ typedef struct {
     const char *name;
     uint32_t count, min, max;
     uint64_t sum;
+
+    uint32_t last_start;
+    uint32_t max_jitter;
 } metric_stats;
 
 static inline void stats_add(metric_stats *stats, uint32_t time) {
@@ -34,6 +37,19 @@ static inline void stats_add(metric_stats *stats, uint32_t time) {
     if (time > stats->max) stats->max = time;
     stats->sum += time;
     stats->count++;
+}
+
+static inline void stats_jitter_add(metric_stats *stats, uint32_t cur_cycles, uint32_t expected) {
+    if (stats->count > 1) {
+        uint32_t actual_period = cur_cycles - stats->last_start;
+
+        int32_t dif = (int32_t)actual_period - (int32_t)expected;
+        uint32_t jitter = (dif > 0) ? (uint32_t)(dif) : (uint32_t)(-dif);
+
+        if (stats->max_jitter < jitter) stats->max_jitter = jitter;
+    }
+
+    stats->last_start = cur_cycles;
 }
 
 

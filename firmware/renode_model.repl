@@ -13,3 +13,6 @@ gpioPortB:
     12 -> w25q64@0
 
 adc1: Analog.STM32_ADC @ sysbus 0x40012000
+
+interuptButton: HardwareButton @ gpioPortC 13
+    -> gpioPortC@13
